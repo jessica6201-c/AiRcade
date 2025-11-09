@@ -17,8 +17,8 @@ export const fruitNinjaGame: BaseGame = {
   metadata: {
     id: "fruit-ninja",
     name: "Fruit Ninja",
-    description: "Slice fruits with your hands!",
-    // splashArt: "/images/fruit-ninja-splash.png"
+    description: "Hand Slicing",
+    splashArt: "/fruit-ninja-2020-08-31.jpg"
   },
 
   onInit: (context: GameContext) => {

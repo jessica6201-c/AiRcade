@@ -4,8 +4,9 @@ import { PoseLandmarker, DrawingUtils } from "@mediapipe/tasks-vision";
 export const poseVisualizerGame: BaseGame = {
   metadata: {
     id: "pose-visualizer",
-    name: "Pose Visualizer",
-    description: "See your pose landmarks in real-time"
+    name: "2048",
+    description: "Real-time Detection",
+    splashArt: "/2048-stockimg.png"
   },
 
   onInit: (context: GameContext) => {

@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #000000;
-  --foreground: #ffffff;
+  --background: #ffffff;
+  --foreground: #171717;
 }
 
 @theme inline {
@@ -10,26 +10,124 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-orbitron: var(--font-orbitron);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  margin: 0;
-  padding: 0;
 }
 
-.grid-background {
-  background-color: #000000;
-  background-image:
-    linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-  background-size: 50px 50px;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: -1;
+/* Arcade Title Animation */
+@keyframes neonShine {
+  0%,
+  100% {
+    text-shadow: 0 0 20px rgba(168, 85, 247, 1),
+      0 0 40px rgba(168, 85, 247, 0.9), 0 0 60px rgba(168, 85, 247, 0.8),
+      0 0 80px rgba(168, 85, 247, 0.7), 0 0 120px rgba(168, 85, 247, 0.6),
+      0 0 160px rgba(168, 85, 247, 0.4);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(168, 85, 247, 1), 0 0 60px rgba(168, 85, 247, 1),
+      0 0 90px rgba(168, 85, 247, 1), 0 0 120px rgba(168, 85, 247, 0.9),
+      0 0 180px rgba(168, 85, 247, 0.8), 0 0 240px rgba(168, 85, 247, 0.6);
+  }
+}
+
+.arcade-title {
+  font-family: var(--font-orbitron), sans-serif;
+  font-weight: 900;
+  font-size: 8rem;
+  letter-spacing: 0.5rem;
+  text-transform: uppercase;
+  color: rgba(220, 180, 255, 1);
+  animation: neonShine 2s ease-in-out infinite;
+}
+
+.arcade-subtitle {
+  font-family: var(--font-orbitron), sans-serif;
+  font-weight: 500;
+  font-size: 1.1rem;
+  letter-spacing: 0.2rem;
+  text-transform: uppercase;
+  color: rgba(180, 130, 240, 0.9);
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.6),
+    0 0 20px rgba(168, 85, 247, 0.4);
+}
+
+.arcade-card-title {
+  font-family: var(--font-orbitron), sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.1rem;
+}
+
+.arcade-card-subtitle {
+  font-family: var(--font-orbitron), sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.08rem;
+}
+
+.arcade-rating {
+  font-family: var(--font-orbitron), sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* Neon Border Pulse Animation */
+@keyframes neonPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.4),
+      0 0 20px rgba(255, 255, 255, 0.3), 0 0 30px rgba(255, 255, 255, 0.2),
+      0 0 40px rgba(255, 255, 255, 0.1), inset 0 0 10px rgba(255, 255, 255, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.6),
+      0 0 30px rgba(255, 255, 255, 0.5), 0 0 45px rgba(255, 255, 255, 0.4),
+      0 0 60px rgba(255, 255, 255, 0.3), inset 0 0 15px rgba(255, 255, 255, 0.3);
+  }
+}
+
+/* Game Card 3D Styles */
+.game-card-3d {
+  width: 320px;
+  height: 360px;
+  border-radius: 1rem;
+  transform-style: preserve-3d;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.game-card-3d:hover {
+  transform: translateX(var(--hover-x, 0)) rotateY(0deg) rotateZ(0deg) !important;
+  z-index: 50 !important;
+}
+
+.card-1:hover {
+  --hover-x: -280px;
+}
+
+.card-2:hover {
+  --hover-x: 0px;
+}
+
+.card-3:hover {
+  --hover-x: 280px;
+}
+
+.neon-border-solid {
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  animation: neonPulse 2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.card-gradient {
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 10px 30px rgba(0, 0, 0, 0.3);
 }

@@ -35,8 +35,9 @@ function spawnCircle(canvas: HTMLCanvasElement) {
 export const pinchCirclesGame: BaseGame = {
   metadata: {
     id: "circle-collect",
-    name: "Circle Collect",
-    description: "Move your hands over circles to collect them!",
+    name: "Piano Tiles",
+    description: "Finger Control",
+    splashArt: "/pianotiles.jpg",
     useHandDetection: false
   },
 

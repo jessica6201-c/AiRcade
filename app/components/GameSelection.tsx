@@ -8,52 +8,79 @@ interface GameSelectionProps {
 }
 
 export default function GameSelection({ games, onSelectGame }: GameSelectionProps) {
+  const getCardGradient = (gameName: string) => {
+    const name = gameName.toLowerCase();
+    if (name.includes('2048')) {
+      return 'from-orange-600 via-orange-500 to-amber-600';
+    } else if (name.includes('fruit') || name.includes('ninja')) {
+      return 'from-purple-600 via-purple-500 to-violet-600';
+    } else if (name.includes('piano') || name.includes('tiles')) {
+      return 'from-blue-600 via-blue-500 to-sky-600';
+    }
+    return 'from-orange-600 via-purple-500 to-blue-600';
+  };
+
   return (
-    <div className="flex flex-col items-center gap-8 w-full max-w-6xl px-4">
-      <div className="text-center">
-        <h1 className="text-5xl font-bold text-white mb-4" style={{ textShadow: '0 0 20px rgba(255,255,255,0.5)' }}>
-          Air Game
-        </h1>
-        <p className="text-lg text-zinc-300" style={{ textShadow: '0 0 10px rgba(255,255,255,0.3)' }}>
-          Select a game to play using pose detection
-        </p>
-        <p className="text-sm text-zinc-400 mt-2">
-          Move your hands to light up the grid
-        </p>
+    <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-8 py-16">
+      {/* Title */}
+      <div className="text-center mb-16">
+        <h1 className="arcade-title mb-2">AIRGAME</h1>
+
+        {/* Subtitle */}
+        <p className="arcade-subtitle mb-0">SELECT A GAME TO PLAY USING POSE DETECTION</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
-        {games.map((game) => (
-          <button
+      {/* Game Cards Fan Layout */}
+      <div className="relative w-full max-w-5xl h-96 flex items-center justify-center">
+        {games.slice(0, 3).map((game, index) => (
+          <div
             key={game.metadata.id}
+            className={`game-card-3d card-${index + 1} group absolute cursor-pointer transition-all duration-500 hover:scale-110`}
+            style={{
+              transform: `translateX(${(index - 1) * 280}px) rotateY(${(index - 1) * -8}deg) rotateZ(${(index - 1) * 2}deg)`,
+              zIndex: index === 1 ? 20 : 10,
+            }}
             onClick={() => onSelectGame(game)}
-            className="group relative overflow-hidden rounded-lg border-2 border-zinc-600 bg-zinc-900 bg-opacity-80 backdrop-blur-sm p-6 transition-all hover:border-zinc-400 hover:bg-zinc-800 hover:bg-opacity-90 hover:shadow-lg hover:shadow-blue-500/20"
           >
-            {game.metadata.splashArt && (
-              <div className="w-full h-48 mb-4 bg-zinc-800 rounded-md overflow-hidden">
-                <img
-                  src={game.metadata.splashArt}
-                  alt={game.metadata.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
 
-            <div className="text-left">
-              <h2 className="text-2xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">
-                {game.metadata.name}
-              </h2>
-              <p className="text-zinc-300">
-                {game.metadata.description}
-              </p>
+            {/* Solid Neon Border Effect */}
+            <div className="neon-border-solid absolute inset-0 rounded-2xl"></div>
+
+            {/* Card Background with Gradient */}
+            <div className={`card-gradient bg-gradient-to-br ${getCardGradient(game.metadata.name)} absolute inset-0 rounded-2xl overflow-hidden`}>
+              {/* Image */}
+              {game.metadata.splashArt && (
+                <div className="absolute inset-0 opacity-60 mix-blend-overlay">
+                  <img
+                    src={game.metadata.splashArt}
+                    alt={game.metadata.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+
+              {/* Gradient Overlay for better text visibility */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
             </div>
 
-            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
-              <div className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                Play
+            {/* Card Content */}
+            <div className="relative z-10 p-6 h-full flex flex-col justify-between">
+              {/* Rating Badge */}
+              <div className="flex justify-end">
+                <div className="bg-white/20 backdrop-blur-sm rounded-full px-3 py-1 flex items-center gap-1">
+                  <span className="text-yellow-400 text-sm">★</span>
+                  <span className="arcade-rating text-white">5.0</span>
+                </div>
+              </div>
+
+              {/* Title and Subtitle */}
+              <div>
+                <h2 className="arcade-card-title text-white mb-1 text-2xl">{game.metadata.name.toUpperCase()}</h2>
+                <p className="arcade-card-subtitle text-white/80 text-sm">{game.metadata.description}</p>
               </div>
             </div>
-          </button>
+
+          </div>
         ))}
       </div>
     </div>
