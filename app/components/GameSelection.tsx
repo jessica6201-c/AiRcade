@@ -21,7 +21,7 @@ export default function GameSelection({ games, onSelectGame }: GameSelectionProp
   };
 
   return (
-    <div className="relative z-10 flex flex-col items-center justify-center min-h-screen px-8 py-16">
+    <div className="relative z-10 flex flex-col items-center justify-center h-screen px-8">
       {/* Title */}
       <div className="text-center mb-16">
         <h1 className="arcade-title mb-2">AIRCADE</h1>

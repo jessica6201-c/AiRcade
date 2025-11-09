@@ -11,37 +11,37 @@ export const FRUITS: Record<string, FruitType> = {
         name: "apple",
         imagePath: "/images/apple.png",
         scoreValue: 10,
-        size: 60
+        size: 60 * 2
     },
     orange: {
         name: "orange",
         imagePath: "/images/orange.png",
         scoreValue: 15,
-        size: 70
+        size: 70 * 2 * 2
     },
     watermelon: {
         name: "watermelon",
         imagePath: "/images/watermelon.png",
         scoreValue: 25,
-        size: 90
+        size: 90 * 2
     },
     banana: {
         name: "banana",
         imagePath: "/images/banana.png",
         scoreValue: 12,
-        size: 65
+        size: 65 * 2
     },
     grape: {
         name: "grape",
         imagePath: "/images/grape.png",
         scoreValue: 8,
-        size: 45
+        size: 45 * 2
     },
     pineapple: {
         name: "pineapple",
         imagePath: "/images/pineapple.png",
         scoreValue: 20,
-        size: 80
+        size: 80 * 2
     }
 };
 

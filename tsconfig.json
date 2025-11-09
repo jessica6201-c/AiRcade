@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "Air-Canvas", "redesign-temp"]
+  "exclude": ["node_modules", "Air-Canvas", "redesign-temp", "2048-design-temp"]
 }

@@ -30,6 +30,25 @@ interface Fruit {
     sliced: boolean;
 }
 
+// Preload fruit images
+const fruitImages: Record<string, HTMLImageElement> = {};
+let imagesLoaded = false;
+
+function preloadImages(): void {
+    if (imagesLoaded) return;
+
+    FRUIT_KEYS.forEach(key => {
+        const fruit = FRUITS[key];
+        if (fruit.imagePath) {
+            const img = new Image();
+            img.src = fruit.imagePath;
+            fruitImages[key] = img;
+        }
+    });
+
+    imagesLoaded = true;
+}
+
 interface TrailPoint {
     x: number;
     y: number;
@@ -52,6 +71,7 @@ interface GameState {
     isGameOver: boolean;
     cursorTrail: CursorTrail;
     lastTrailSampleTime: { right: number; left: number };
+    lastFrameTime: number;
 }
 
 const state: GameState = {
@@ -70,7 +90,8 @@ const state: GameState = {
     lastTrailSampleTime: {
         right: 0,
         left: 0
-    }
+    },
+    lastFrameTime: 0
 };
 
 function getRandomFruitType(): string {
@@ -315,21 +336,22 @@ function drawFruit(ctx: CanvasRenderingContext2D, fruit: Fruit): void {
     ctx.translate(fruit.x, fruit.y);
     ctx.rotate(degreesToRadians(fruit.rotation));
 
-    // Draw bounding box (for debugging)
-    ctx.strokeStyle = "#ff0000";
-    ctx.lineWidth = 2;
-    ctx.strokeRect(-fruit.size / 2, -fruit.size / 2, fruit.size, fruit.size);
+    const img = fruitImages[fruit.type];
+    if (img && img.complete && img.naturalWidth > 0) {
+        // Draw image
+        ctx.drawImage(img, -fruit.size / 2, -fruit.size / 2, fruit.size, fruit.size);
+    } else {
+        // Fallback: draw rectangle when image not loaded
+        ctx.fillStyle = DEFAULT_FRUIT_COLOR;
+        ctx.fillRect(-fruit.size / 2, -fruit.size / 2, fruit.size, fruit.size);
 
-    // Draw fruit as rectangle (fallback when no image)
-    ctx.fillStyle = DEFAULT_FRUIT_COLOR;
-    ctx.fillRect(-fruit.size / 2, -fruit.size / 2, fruit.size, fruit.size);
-
-    // Draw fruit type label
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "12px sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(fruit.type.substring(0, 3).toUpperCase(), 0, 0);
+        // Draw fruit type label
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(fruit.type.substring(0, 3).toUpperCase(), 0, 0);
+    }
 
     ctx.restore();
 }
@@ -349,20 +371,24 @@ export const fruitNinjaGame: BaseGame = {
     },
 
     onInit: (context: GameContext) => {
+        // Preload images
+        preloadImages();
+
         // Reset game state
         state.fruits = [];
         state.redScore = 0;
         state.blueScore = 0;
-        state.lastSpawnTime = performance.now();
+        const currentTime = performance.now();
+        state.lastSpawnTime = currentTime;
         state.nextSpawnInterval = getRandomSpawnInterval();
-        state.gameStartTime = performance.now();
+        state.gameStartTime = currentTime;
         state.gameEndTime = state.gameStartTime + GAME_DURATION * 1000;
         state.isGameOver = false;
         state.cursorTrail.right = [];
         state.cursorTrail.left = [];
-        const currentTime = performance.now();
         state.lastTrailSampleTime.right = currentTime;
         state.lastTrailSampleTime.left = currentTime;
+        state.lastFrameTime = currentTime;
     },
 
     onFrame: (context: GameContext, poseData: PoseData | null) => {
@@ -376,7 +402,8 @@ export const fruitNinjaGame: BaseGame = {
 
         if (!state.isGameOver) {
             // Calculate delta time for physics
-            const deltaTime = 1 / 60; // Assuming 60 FPS for now
+            const deltaTime = (currentTime - state.lastFrameTime) / 1000;
+            state.lastFrameTime = currentTime;
 
             // Update physics
             updatePhysics(deltaTime, canvas);
@@ -490,5 +517,6 @@ export const fruitNinjaGame: BaseGame = {
         state.cursorTrail.left = [];
         state.lastTrailSampleTime.right = 0;
         state.lastTrailSampleTime.left = 0;
+        state.lastFrameTime = 0;
     }
 };

@@ -282,7 +282,7 @@ export default function Home() {
     };
 
     return (
-        <div className="flex min-h-screen items-center justify-center font-sans relative bg-black overflow-hidden">
+        <div className="flex h-screen items-center justify-center font-sans relative bg-black overflow-hidden">
             {!selectedGame && (
                 <>
                     <canvas
@@ -293,7 +293,7 @@ export default function Home() {
                     />
                     <button
                         onClick={() => setBackgroundMode(prev => prev === 'hands' ? 'skeleton' : 'hands')}
-                        className="fixed bottom-8 right-8 z-20 px-6 py-3 bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 transition-all border-2 border-white hover:border-green-400 shadow-lg font-bold text-lg"
+                        className="fixed bottom-4 right-4 z-20 px-6 py-3 bg-zinc-900 text-white rounded-lg hover:bg-zinc-700 transition-all border-2 border-white hover:border-green-400 shadow-lg font-bold text-lg"
                     >
                         {backgroundMode === 'hands' ? '🦴' : '✋'}
                     </button>
@@ -306,9 +306,9 @@ export default function Home() {
                 playsInline
                 muted
             />
-            <main className="flex min-h-screen w-full flex-col items-center py-8 px-4 relative z-10">
+            <main className="flex h-screen w-full flex-col items-center px-4 relative z-10">
                 {selectedGame ? (
-                    <div className="w-full flex flex-col items-center gap-4">
+                    <div className="w-full h-full flex flex-col items-center gap-4 py-4">
                         <button
                             onClick={handleBackToMenu}
                             className="self-start px-4 py-2 bg-zinc-800 text-white rounded-lg hover:bg-zinc-700 transition-colors border border-zinc-600"
