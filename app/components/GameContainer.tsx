@@ -87,15 +87,13 @@ export default function GameContainer({ game }: GameContainerProps) {
 
         let smoothedData;
         if (useHands) {
-          // Detect hands (hand tracking already smooth, skip smoothing)
-          const handData = detectHands(video, performance.now());
-          smoothedData = handData ? {
-            landmarks: handData.landmarks,
-            worldLandmarks: handData.worldLandmarks,
-            timestamp: performance.now()
+          const rawHandData = detectHands(video, performance.now());
+          const handDataWithTimestamp = rawHandData ? {
+            ...rawHandData,
+            timestamp: rawHandData.timestamp ?? performance.now()
           } : null;
+          smoothedData = smoothPoseData(handDataWithTimestamp);
         } else {
-          // Detect pose and apply smoothing
           const rawPoseData = detectPose(video, performance.now());
           smoothedData = smoothPoseData(rawPoseData);
         }

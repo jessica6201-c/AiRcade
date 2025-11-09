@@ -1,84 +1,91 @@
 "use client";
 
 import { useRef } from "react";
-import { PoseData } from "@/app/types/game";
+import { PoseData, HandData } from "@/app/types/game";
 import { NormalizedLandmark } from "@mediapipe/tasks-vision";
 
 interface SmoothingOptions {
-  slowFactor?: number;
-  fastFactor?: number;
-  velocityThreshold?: number;
+  bufferSize?: number;
 }
 
+type LandmarkData = PoseData | HandData;
+
 /**
- * Hook to smooth landmark positions using adaptive exponential moving average
- * Uses velocity-based smoothing: more responsive during fast movements, more stable when slow
+ * Hook to smooth landmark positions using ring buffer averaging
+ * Matches Air Canvas implementation: stores last N frames and averages them
+ * Works with both pose and hand data
  */
 export function useLandmarkSmoothing(options: SmoothingOptions = {}) {
-  const {
-    slowFactor = 0.6,
-    fastFactor = 0.2,
-    velocityThreshold = 0.015
-  } = options;
+  const { bufferSize = 5 } = options;
 
-  const previousPoseData = useRef<PoseData | null>(null);
+  const dataBuffer = useRef<LandmarkData[]>([]);
 
-  const smoothLandmark = (
-    current: NormalizedLandmark,
-    previous: NormalizedLandmark | undefined
-  ): NormalizedLandmark => {
-    if (!previous) return current;
+  const averageLandmarks = (
+    landmarksBuffer: NormalizedLandmark[][]
+  ): NormalizedLandmark[] => {
+    if (landmarksBuffer.length === 0) return [];
 
-    const dx = current.x - previous.x;
-    const dy = current.y - previous.y;
-    const velocity = Math.sqrt(dx * dx + dy * dy);
+    const numLandmarks = landmarksBuffer[0].length;
+    const result: NormalizedLandmark[] = [];
 
-    const alpha = velocity > velocityThreshold ? fastFactor : slowFactor;
+    for (let i = 0; i < numLandmarks; i++) {
+      let sumX = 0, sumY = 0, sumZ = 0;
+      let lastVisibility = landmarksBuffer[landmarksBuffer.length - 1][i].visibility;
 
-    return {
-      x: alpha * previous.x + (1 - alpha) * current.x,
-      y: alpha * previous.y + (1 - alpha) * current.y,
-      z: alpha * previous.z + (1 - alpha) * current.z,
-      visibility: current.visibility
-    };
+      for (const landmarks of landmarksBuffer) {
+        sumX += landmarks[i].x;
+        sumY += landmarks[i].y;
+        sumZ += landmarks[i].z;
+      }
+
+      result.push({
+        x: sumX / landmarksBuffer.length,
+        y: sumY / landmarksBuffer.length,
+        z: sumZ / landmarksBuffer.length,
+        visibility: lastVisibility
+      });
+    }
+
+    return result;
   };
 
-  const smoothPoseData = (poseData: PoseData | null): PoseData | null => {
-    if (!poseData) {
-      previousPoseData.current = null;
+  const smoothData = <T extends LandmarkData>(data: T | null): T | null => {
+    if (!data) {
+      dataBuffer.current = [];
       return null;
     }
 
-    if (!previousPoseData.current) {
-      previousPoseData.current = poseData;
-      return poseData;
+    dataBuffer.current.push(data);
+    if (dataBuffer.current.length > bufferSize) {
+      dataBuffer.current.shift();
     }
 
-    const smoothedLandmarks = poseData.landmarks.map((pose, poseIndex) => {
-      const previousPose = previousPoseData.current?.landmarks[poseIndex];
+    const smoothedLandmarks = data.landmarks.map((_, index) => {
+      const landmarksAtIndex = dataBuffer.current
+        .map(d => d.landmarks[index])
+        .filter((landmarks): landmarks is NormalizedLandmark[] => landmarks !== undefined);
 
-      return pose.map((landmark, landmarkIndex) => {
-        const previousLandmark = previousPose?.[landmarkIndex];
-        return smoothLandmark(landmark, previousLandmark);
-      });
+      if (landmarksAtIndex.length === 0) {
+        return data.landmarks[index];
+      }
+
+      return averageLandmarks(landmarksAtIndex);
     });
 
-    const smoothedData: PoseData = {
+    return {
       landmarks: smoothedLandmarks,
-      worldLandmarks: poseData.worldLandmarks,
-      timestamp: poseData.timestamp
-    };
-
-    previousPoseData.current = smoothedData;
-    return smoothedData;
+      worldLandmarks: data.worldLandmarks,
+      timestamp: data.timestamp
+    } as T;
   };
 
   const reset = () => {
-    previousPoseData.current = null;
+    dataBuffer.current = [];
   };
 
   return {
-    smoothPoseData,
+    smoothData,
+    smoothPoseData: smoothData,
     reset
   };
 }

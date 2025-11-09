@@ -1,5 +1,4 @@
-import { BaseGame, GameContext, HandData } from "@/app/types/game";
-import { detectHandPinch } from "@/app/utils/gestures";
+import { BaseGame, GameContext, PoseData } from "@/app/types/game";
 
 interface Circle {
   x: number;
@@ -35,10 +34,10 @@ function spawnCircle(canvas: HTMLCanvasElement) {
 
 export const pinchCirclesGame: BaseGame = {
   metadata: {
-    id: "pinch-circles",
-    name: "Pinch Circles",
-    description: "Pinch your fingers and move over circles to collect them!",
-    useHandDetection: true
+    id: "circle-collect",
+    name: "Circle Collect",
+    description: "Move your hands over circles to collect them!",
+    useHandDetection: false
   },
 
   onInit: (context: GameContext) => {
@@ -51,7 +50,7 @@ export const pinchCirclesGame: BaseGame = {
     }
   },
 
-  onFrame: (context: GameContext, handData: HandData | null) => {
+  onFrame: (context: GameContext, poseData: PoseData | null) => {
     const { ctx, canvas } = context;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -84,42 +83,56 @@ export const pinchCirclesGame: BaseGame = {
 
     state.circles = state.circles.filter(c => !c.collected);
 
-    if (handData && handData.landmarks.length > 0) {
+    if (poseData && poseData.landmarks.length > 0) {
+      const firstPose = poseData.landmarks[0];
       const colors = ["#ff0088", "#0088ff"];
 
-      for (let i = 0; i < handData.landmarks.length; i++) {
-        const hand = handData.landmarks[i];
-        const pinch = detectHandPinch(hand, canvas.width, canvas.height);
+      // Right wrist (index 16)
+      const rightWrist = firstPose[16];
+      if (rightWrist) {
+        const x = (1 - rightWrist.x) * canvas.width;
+        const y = rightWrist.y * canvas.height;
 
-        if (pinch.position) {
-          const handX = pinch.position.x;
-          const handY = pinch.position.y;
+        ctx.fillStyle = colors[0];
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, Math.PI * 2);
+        ctx.fill();
 
-          if (pinch.isPinching) {
-            ctx.fillStyle = colors[i % colors.length];
-            ctx.beginPath();
-            ctx.arc(handX, handY, 20, 0, Math.PI * 2);
-            ctx.fill();
-
-            state.circles.forEach(circle => {
-              if (!circle.collected) {
-                const dist = Math.sqrt(
-                  Math.pow(handX - circle.x, 2) + Math.pow(handY - circle.y, 2)
-                );
-                if (dist < circle.radius + 20) {
-                  circle.collected = true;
-                  state.score++;
-                }
-              }
-            });
-          } else {
-            ctx.strokeStyle = "#ffffff88";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(handX, handY, 15, 0, Math.PI * 2);
-            ctx.stroke();
+        state.circles.forEach(circle => {
+          if (!circle.collected) {
+            const dist = Math.sqrt(
+              Math.pow(x - circle.x, 2) + Math.pow(y - circle.y, 2)
+            );
+            if (dist < circle.radius + 20) {
+              circle.collected = true;
+              state.score++;
+            }
           }
-        }
+        });
+      }
+
+      // Left wrist (index 15)
+      const leftWrist = firstPose[15];
+      if (leftWrist) {
+        const x = (1 - leftWrist.x) * canvas.width;
+        const y = leftWrist.y * canvas.height;
+
+        ctx.fillStyle = colors[1];
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, Math.PI * 2);
+        ctx.fill();
+
+        state.circles.forEach(circle => {
+          if (!circle.collected) {
+            const dist = Math.sqrt(
+              Math.pow(x - circle.x, 2) + Math.pow(y - circle.y, 2)
+            );
+            if (dist < circle.radius + 20) {
+              circle.collected = true;
+              state.score++;
+            }
+          }
+        });
       }
     }
 
@@ -129,7 +142,7 @@ export const pinchCirclesGame: BaseGame = {
 
     ctx.font = "18px sans-serif";
     ctx.fillStyle = "#ffffff88";
-    ctx.fillText("Pinch your fingers and move over circles!", 30, canvas.height - 30);
+    ctx.fillText("Move your hands over circles to collect them!", 30, canvas.height - 30);
   },
 
   onCleanup: () => {
