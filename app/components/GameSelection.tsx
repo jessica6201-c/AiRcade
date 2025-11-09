@@ -14,7 +14,7 @@ export default function GameSelection({ games, onSelectGame }: GameSelectionProp
       return 'from-orange-600 via-orange-500 to-amber-600';
     } else if (name.includes('fruit') || name.includes('ninja')) {
       return 'from-purple-600 via-purple-500 to-violet-600';
-    } else if (name.includes('piano') || name.includes('tiles')) {
+    } else if (name.includes('piano') || name.includes('tiles') || name.includes('dino') || name.includes('run')) {
       return 'from-blue-600 via-blue-500 to-sky-600';
     }
     return 'from-orange-600 via-purple-500 to-blue-600';
