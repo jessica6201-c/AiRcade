@@ -1,12 +1,12 @@
 import { GameRegistry } from "@/app/types/game";
 import { poseVisualizerGame } from "./poseVisualizer";
 import { fruitNinjaGame } from "./fruitNinja";
-import { pinchCirclesGame } from "./pinchCirclesHand";
+import { dinoGame } from "./dinoGame";
 
 export const GAMES: GameRegistry = {
   "pose-visualizer": poseVisualizerGame,
   "fruit-ninja": fruitNinjaGame,
-  "pinch-circles": pinchCirclesGame
+  "dino-game": dinoGame
 };
 
 // Helper to get game by ID

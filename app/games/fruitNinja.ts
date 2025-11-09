@@ -43,7 +43,8 @@ interface CursorTrail {
 
 interface GameState {
     fruits: Fruit[];
-    score: number;
+    redScore: number;
+    blueScore: number;
     lastSpawnTime: number;
     nextSpawnInterval: number;
     gameStartTime: number;
@@ -55,7 +56,8 @@ interface GameState {
 
 const state: GameState = {
     fruits: [],
-    score: 0,
+    redScore: 0,
+    blueScore: 0,
     lastSpawnTime: 0,
     nextSpawnInterval: 1,
     gameStartTime: 0,
@@ -260,7 +262,7 @@ function checkCollisions(canvas: HTMLCanvasElement, poseData: PoseData | null): 
                 // Check if distance is less than circle radius
                 if (distanceSquared < CURSOR_RADIUS * CURSOR_RADIUS) {
                     fruit.sliced = true;
-                    state.score += FRUITS[fruit.type].scoreValue;
+                    state.redScore += FRUITS[fruit.type].scoreValue;
                 }
             }
         });
@@ -297,7 +299,7 @@ function checkCollisions(canvas: HTMLCanvasElement, poseData: PoseData | null): 
                 // Check if distance is less than circle radius
                 if (distanceSquared < CURSOR_RADIUS * CURSOR_RADIUS) {
                     fruit.sliced = true;
-                    state.score += FRUITS[fruit.type].scoreValue;
+                    state.blueScore += FRUITS[fruit.type].scoreValue;
                 }
             }
         });
@@ -349,7 +351,8 @@ export const fruitNinjaGame: BaseGame = {
     onInit: (context: GameContext) => {
         // Reset game state
         state.fruits = [];
-        state.score = 0;
+        state.redScore = 0;
+        state.blueScore = 0;
         state.lastSpawnTime = performance.now();
         state.nextSpawnInterval = getRandomSpawnInterval();
         state.gameStartTime = performance.now();
@@ -447,26 +450,32 @@ export const fruitNinjaGame: BaseGame = {
         }
 
         // Draw UI
-        ctx.fillStyle = "#ffffff";
         ctx.font = "bold 36px sans-serif";
-        ctx.fillText(`Score: ${state.score}`, 30, 50);
 
+        // Red player score (right hand)
+        ctx.fillStyle = "#FF0000";
+        ctx.fillText(`Red: ${state.redScore}`, 30, 50);
+
+        // Blue player score (left hand)
+        ctx.fillStyle = "#0000FF";
+        ctx.fillText(`Blue: ${state.blueScore}`, 30, 100);
+
+        // Time
+        ctx.fillStyle = "#ffffff";
         const remainingTime = getRemainingTime();
         ctx.fillText(`Time: ${Math.ceil(remainingTime)}s`, canvas.width - 150, 50);
-
-        // Draw instructions
-        ctx.font = "18px sans-serif";
-        ctx.fillStyle = "#ffffff88";
-        ctx.fillText("Move your hands over fruits to slice them!", 30, canvas.height - 30);
 
         // Draw game over message
         if (state.isGameOver) {
             ctx.fillStyle = "#ffffff";
             ctx.font = "bold 48px sans-serif";
             ctx.textAlign = "center";
-            ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 50);
+            ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 80);
             ctx.font = "bold 36px sans-serif";
-            ctx.fillText(`Final Score: ${state.score}`, canvas.width / 2, canvas.height / 2 + 10);
+            ctx.fillStyle = "#FF0000";
+            ctx.fillText(`Red: ${state.redScore}`, canvas.width / 2, canvas.height / 2 - 20);
+            ctx.fillStyle = "#0000FF";
+            ctx.fillText(`Blue: ${state.blueScore}`, canvas.width / 2, canvas.height / 2 + 30);
             ctx.textAlign = "left";
         }
     },
@@ -474,7 +483,8 @@ export const fruitNinjaGame: BaseGame = {
     onCleanup: () => {
         // Clean up state
         state.fruits = [];
-        state.score = 0;
+        state.redScore = 0;
+        state.blueScore = 0;
         state.isGameOver = false;
         state.cursorTrail.right = [];
         state.cursorTrail.left = [];
