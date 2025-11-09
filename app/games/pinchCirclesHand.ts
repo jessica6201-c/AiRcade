@@ -1,5 +1,5 @@
-import { BaseGame, GameContext, PoseData } from "@/app/types/game";
-import { detectHandPinches } from "@/app/utils/gestures";
+import { BaseGame, GameContext, HandData } from "@/app/types/game";
+import { detectHandPinch } from "@/app/utils/gestures";
 
 interface Circle {
   x: number;
@@ -37,7 +37,8 @@ export const pinchCirclesGame: BaseGame = {
   metadata: {
     id: "pinch-circles",
     name: "Pinch Circles",
-    description: "Pinch your fingers and move over circles to collect them!"
+    description: "Pinch your fingers and move over circles to collect them!",
+    useHandDetection: true
   },
 
   onInit: (context: GameContext) => {
@@ -45,31 +46,26 @@ export const pinchCirclesGame: BaseGame = {
     state.score = 0;
     state.lastSpawnTime = performance.now();
 
-    // Spawn initial circles
     for (let i = 0; i < 3; i++) {
       spawnCircle(context.canvas);
     }
   },
 
-  onFrame: (context: GameContext, poseData: PoseData | null) => {
+  onFrame: (context: GameContext, handData: HandData | null) => {
     const { ctx, canvas } = context;
 
-    // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw background
     ctx.fillStyle = "#1a1a2e";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Spawn new circles periodically
     const currentTime = performance.now();
     if (currentTime - state.lastSpawnTime > 2000 && state.circles.length < 5) {
       spawnCircle(canvas);
       state.lastSpawnTime = currentTime;
     }
 
-    // Draw circles
-    state.circles.forEach((circle, index) => {
+    state.circles.forEach((circle) => {
       if (!circle.collected) {
         ctx.fillStyle = "#00ff88";
         ctx.strokeStyle = "#00cc66";
@@ -79,7 +75,6 @@ export const pinchCirclesGame: BaseGame = {
         ctx.fill();
         ctx.stroke();
 
-        // Draw inner circle
         ctx.fillStyle = "#ffffff44";
         ctx.beginPath();
         ctx.arc(circle.x, circle.y, circle.radius * 0.6, 0, Math.PI * 2);
@@ -87,27 +82,25 @@ export const pinchCirclesGame: BaseGame = {
       }
     });
 
-    // Remove collected circles
     state.circles = state.circles.filter(c => !c.collected);
 
-    // Process hand tracking
-    if (poseData && poseData.landmarks.length > 0) {
-      for (const pose of poseData.landmarks) {
-        const pinches = detectHandPinches(pose, canvas.width, canvas.height);
+    if (handData && handData.landmarks.length > 0) {
+      const colors = ["#ff0088", "#0088ff"];
 
-        // Right hand
-        if (pinches.right.position) {
-          const handX = pinches.right.position.x * canvas.width;
-          const handY = pinches.right.position.y * canvas.height;
+      for (let i = 0; i < handData.landmarks.length; i++) {
+        const hand = handData.landmarks[i];
+        const pinch = detectHandPinch(hand, canvas.width, canvas.height);
 
-          if (pinches.right.isPinching) {
-            // Draw pinch indicator
-            ctx.fillStyle = "#ff0088";
+        if (pinch.position) {
+          const handX = pinch.position.x;
+          const handY = pinch.position.y;
+
+          if (pinch.isPinching) {
+            ctx.fillStyle = colors[i % colors.length];
             ctx.beginPath();
             ctx.arc(handX, handY, 20, 0, Math.PI * 2);
             ctx.fill();
 
-            // Check collision with circles
             state.circles.forEach(circle => {
               if (!circle.collected) {
                 const dist = Math.sqrt(
@@ -120,41 +113,6 @@ export const pinchCirclesGame: BaseGame = {
               }
             });
           } else {
-            // Draw hand position when not pinching
-            ctx.strokeStyle = "#ffffff88";
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(handX, handY, 15, 0, Math.PI * 2);
-            ctx.stroke();
-          }
-        }
-
-        // Left hand
-        if (pinches.left.position) {
-          const handX = pinches.left.position.x * canvas.width;
-          const handY = pinches.left.position.y * canvas.height;
-
-          if (pinches.left.isPinching) {
-            // Draw pinch indicator
-            ctx.fillStyle = "#0088ff";
-            ctx.beginPath();
-            ctx.arc(handX, handY, 20, 0, Math.PI * 2);
-            ctx.fill();
-
-            // Check collision with circles
-            state.circles.forEach(circle => {
-              if (!circle.collected) {
-                const dist = Math.sqrt(
-                  Math.pow(handX - circle.x, 2) + Math.pow(handY - circle.y, 2)
-                );
-                if (dist < circle.radius + 20) {
-                  circle.collected = true;
-                  state.score++;
-                }
-              }
-            });
-          } else {
-            // Draw hand position when not pinching
             ctx.strokeStyle = "#ffffff88";
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -165,12 +123,10 @@ export const pinchCirclesGame: BaseGame = {
       }
     }
 
-    // Draw score
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 36px sans-serif";
     ctx.fillText(`Score: ${state.score}`, 30, 50);
 
-    // Draw instructions
     ctx.font = "18px sans-serif";
     ctx.fillStyle = "#ffffff88";
     ctx.fillText("Pinch your fingers and move over circles!", 30, canvas.height - 30);

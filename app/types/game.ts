@@ -6,11 +6,18 @@ export interface GameMetadata {
   description: string;
   thumbnail?: string;
   splashArt?: string;
+  useHandDetection?: boolean;
 }
 
 export interface PoseData {
   landmarks: NormalizedLandmark[][];
   worldLandmarks?: NormalizedLandmark[][];
+  timestamp: number;
+}
+
+export interface HandData {
+  landmarks: any[][];
+  worldLandmarks?: any[][];
   timestamp: number;
 }
 
@@ -27,8 +34,8 @@ export interface BaseGame {
   // Called once when game starts
   onInit?: (context: GameContext) => void;
 
-  // Called every frame with pose data
-  onFrame: (context: GameContext, poseData: PoseData | null) => void;
+  // Called every frame with pose/hand data
+  onFrame: (context: GameContext, data: PoseData | HandData | null) => void;
 
   // Called when game ends
   onCleanup?: () => void;

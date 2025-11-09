@@ -5,7 +5,7 @@ import GameContainer from "./components/GameContainer";
 import GameSelection from "./components/GameSelection";
 import { getAllGames } from "./games";
 import { BaseGame } from "./types/game";
-import { usePoseDetection } from "@/app/hooks/usePoseDetection";
+import { useHandDetection } from "@/app/hooks/useHandDetection";
 import { useCamera } from "@/app/hooks/useCamera";
 
 interface GridCell {
@@ -14,6 +14,16 @@ interface GridCell {
   brightness: number;
 }
 
+// MediaPipe hand landmark connections (hand skeleton)
+const HAND_CONNECTIONS = [
+  [0, 1], [1, 2], [2, 3], [3, 4],           // Thumb
+  [0, 5], [5, 6], [6, 7], [7, 8],           // Index
+  [0, 9], [9, 10], [10, 11], [11, 12],      // Middle
+  [0, 13], [13, 14], [14, 15], [15, 16],    // Ring
+  [0, 17], [17, 18], [18, 19], [19, 20],    // Pinky
+  [5, 9], [9, 13], [13, 17]                 // Palm
+];
+
 export default function Home() {
   const [selectedGame, setSelectedGame] = useState<BaseGame | null>(null);
   const games = getAllGames();
@@ -21,10 +31,13 @@ export default function Home() {
   // Hand tracking state
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const animationRef = useRef<number>();
-  const [gridCells, setGridCells] = useState<GridCell[][]>([]);
+  const animationRef = useRef<number | undefined>(undefined);
 
-  const { detectPose, isReady: poseReady } = usePoseDetection({ modelType: "lite" });
+  const { detectHands, isReady: handsReady } = useHandDetection({
+    numHands: 2,
+    minDetectionConfidence: 0.3,
+    minTrackingConfidence: 0.3
+  });
   const { videoRef: cameraRef, isReady: cameraReady, error: cameraError } = useCamera({
     width: 640,
     height: 480
@@ -32,27 +45,14 @@ export default function Home() {
 
   const [gridSize, setGridSize] = useState({ cols: 0, rows: 0 });
   const cellSize = 50;
-  const maxDistance = 300;
+  const maxDistance = 200;
 
-  // Initialize grid cells to fit screen
+  // Initialize grid size
   useEffect(() => {
     const updateGridSize = () => {
       const cols = Math.ceil(window.innerWidth / cellSize);
       const rows = Math.ceil(window.innerHeight / cellSize);
       setGridSize({ cols, rows });
-
-      const cells: GridCell[][] = [];
-      for (let i = 0; i < rows; i++) {
-        cells[i] = [];
-        for (let j = 0; j < cols; j++) {
-          cells[i][j] = {
-            x: j * cellSize,
-            y: i * cellSize,
-            brightness: 0
-          };
-        }
-      }
-      setGridCells(cells);
     };
 
     updateGridSize();
@@ -60,136 +60,161 @@ export default function Home() {
     return () => window.removeEventListener('resize', updateGridSize);
   }, []);
 
-  // Get hand landmark positions from pose data (like pinch circles)
-  const getHandPositions = (poseData: any) => {
-    const handPositions: { x: number; y: number }[] = [];
-
-    if (poseData && poseData.landmarks && poseData.landmarks.length > 0) {
-      for (const pose of poseData.landmarks) {
-        // Right hand index finger tip (landmark 20)
-        const rightIndex = pose[20];
-        // Left hand index finger tip (landmark 19)
-        const leftIndex = pose[19];
-
-        if (rightIndex) {
-          const handX = (1 - rightIndex.x) * window.innerWidth;
-          const handY = rightIndex.y * window.innerHeight;
-          handPositions.push({ x: handX, y: handY });
-        }
-
-        if (leftIndex) {
-          const handX = (1 - leftIndex.x) * window.innerWidth;
-          const handY = leftIndex.y * window.innerHeight;
-          handPositions.push({ x: handX, y: handY });
-        }
-      }
-    }
-
-    return handPositions;
-  };
-
-  // Update grid brightness based on hand positions with smooth gradient
-  const updateGridBrightness = (handPositions: { x: number; y: number }[]) => {
-    setGridCells(prevCells => {
-      return prevCells.map((row, i) =>
-        row.map((cell, j) => {
-          let maxBrightness = 0;
-
-          handPositions.forEach(hand => {
-            const cellCenterX = cell.x + cellSize/2;
-            const cellCenterY = cell.y + cellSize/2;
-            const distance = Math.sqrt(
-              Math.pow(hand.x - cellCenterX, 2) +
-              Math.pow(hand.y - cellCenterY, 2)
-            );
-
-            // Smooth gradient: cells get brighter as hand gets closer
-            // Using exponential falloff for smoother gradient
-            const normalizedDistance = Math.max(0, 1 - (distance / maxDistance));
-            const brightness = Math.pow(normalizedDistance, 2); // Squared for smoother falloff
-
-            maxBrightness = Math.max(maxBrightness, brightness);
-          });
-
-          return {
-            ...cell,
-            brightness: maxBrightness
-          };
-        })
-      );
-    });
-  };
-
-  // Animation loop - only track real hands
-  const animate = () => {
-    if (videoRef.current && poseReady && cameraReady && !cameraError) {
-      const poseData = detectPose(videoRef.current, performance.now());
-
-      if (poseData) {
-        const handPositions = getHandPositions(poseData);
-        updateGridBrightness(handPositions);
-      }
-    }
-
-    animationRef.current = requestAnimationFrame(animate);
-  };
-
-  // Start animation when ready
+  // Animation loop - draw directly to canvas
   useEffect(() => {
-    if (poseReady && cameraReady && !cameraError) {
-      videoRef.current = cameraRef.current;
-    }
+    if (!handsReady || !cameraReady || cameraError || selectedGame) return;
 
-    // Always start animation
-    animate();
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [poseReady, cameraReady, cameraError]);
-
-  // Draw grid
-  useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const video = cameraRef.current;
+    if (!video) return;
 
-    gridCells.forEach((row, i) => {
-      row.forEach((cell, j) => {
-        const cellCenterX = cell.x + cellSize/2;
-        const cellCenterY = cell.y + cellSize/2;
+    videoRef.current = video;
 
-        // Draw cell with smooth gradient based on brightness
-        if (cell.brightness > 0.01) {
-          const gradient = ctx.createRadialGradient(
-            cellCenterX, cellCenterY, 0,
-            cellCenterX, cellCenterY, cellSize * 0.8
-          );
+    // Make sure video is playing
+    video.play().catch(e => console.error('Video play error:', e));
 
-          const intensity = cell.brightness;
-          gradient.addColorStop(0, `rgba(255, 255, 255, ${intensity})`);
-          gradient.addColorStop(0.3, `rgba(220, 220, 255, ${intensity * 0.7})`);
-          gradient.addColorStop(0.6, `rgba(150, 150, 255, ${intensity * 0.4})`);
-          gradient.addColorStop(1, `rgba(100, 100, 255, ${intensity * 0.1})`);
+    let frameCount = 0;
 
-          ctx.fillStyle = gradient;
-          ctx.fillRect(cell.x, cell.y, cellSize, cellSize);
+    const loop = () => {
+      if (!video || selectedGame) {
+        animationRef.current = requestAnimationFrame(loop);
+        return;
+      }
+
+      frameCount++;
+      if (frameCount % 60 === 0) {
+        console.log('Loop running, frame:', frameCount, 'video ready:', video.readyState);
+      }
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const handData = detectHands(video, performance.now());
+      let points: { x: number; y: number }[] = [];
+      let lines: { x1: number; y1: number; x2: number; y2: number }[] = [];
+
+      if (handData && handData.landmarks && handData.landmarks.length > 0) {
+        if (frameCount % 60 === 0) {
+          console.log('Hand detected! Landmarks:', handData.landmarks.length);
         }
 
-        // Always draw grid lines, but make them brighter based on proximity
-        const lineOpacity = 0.1 + (cell.brightness * 0.6);
-        ctx.strokeStyle = `rgba(255, 255, 255, ${lineOpacity})`;
-        ctx.lineWidth = cell.brightness > 0.01 ? 1.5 : 1;
-        ctx.strokeRect(cell.x, cell.y, cellSize, cellSize);
-      });
-    });
-  }, [gridCells]);
+        for (const hand of handData.landmarks) {
+          const screenPoints = hand.map((landmark: { x: number; y: number }) => ({
+            x: (1 - landmark.x) * window.innerWidth,
+            y: landmark.y * window.innerHeight
+          }));
+
+          points.push(...screenPoints);
+
+          HAND_CONNECTIONS.forEach(([start, end]) => {
+            lines.push({
+              x1: screenPoints[start].x,
+              y1: screenPoints[start].y,
+              x2: screenPoints[end].x,
+              y2: screenPoints[end].y
+            });
+          });
+        }
+      }
+
+      // Draw grid
+      const cols = Math.ceil(window.innerWidth / cellSize);
+      const rows = Math.ceil(window.innerHeight / cellSize);
+
+      for (let i = 0; i < rows; i++) {
+        for (let j = 0; j < cols; j++) {
+          const cellX = j * cellSize;
+          const cellY = i * cellSize;
+          const cellCenterX = cellX + cellSize / 2;
+          const cellCenterY = cellY + cellSize / 2;
+
+          let brightness = 0;
+
+          if (points.length > 0) {
+            let minDistanceToPoint = Infinity;
+            let minDistanceToLine = Infinity;
+            let pointInside = false;
+
+            for (const point of points) {
+              if (point.x >= cellX && point.x <= cellX + cellSize &&
+                  point.y >= cellY && point.y <= cellY + cellSize) {
+                pointInside = true;
+                break;
+              }
+
+              const dist = Math.sqrt(
+                Math.pow(point.x - cellCenterX, 2) +
+                Math.pow(point.y - cellCenterY, 2)
+              );
+              minDistanceToPoint = Math.min(minDistanceToPoint, dist);
+            }
+
+            for (const line of lines) {
+              const A = cellCenterX - line.x1;
+              const B = cellCenterY - line.y1;
+              const C = line.x2 - line.x1;
+              const D = line.y2 - line.y1;
+
+              const dot = A * C + B * D;
+              const lenSq = C * C + D * D;
+              let param = lenSq !== 0 ? dot / lenSq : -1;
+
+              let xx, yy;
+              if (param < 0) {
+                xx = line.x1;
+                yy = line.y1;
+              } else if (param > 1) {
+                xx = line.x2;
+                yy = line.y2;
+              } else {
+                xx = line.x1 + param * C;
+                yy = line.y1 + param * D;
+              }
+
+              const dx = cellCenterX - xx;
+              const dy = cellCenterY - yy;
+              const dist = Math.sqrt(dx * dx + dy * dy);
+              minDistanceToLine = Math.min(minDistanceToLine, dist);
+            }
+
+            if (pointInside) {
+              brightness = 1;
+            } else {
+              const minDistance = Math.min(minDistanceToPoint, minDistanceToLine);
+              const normalizedDistance = Math.max(0, 1 - (minDistance / maxDistance));
+              brightness = Math.pow(normalizedDistance, 1.5);
+            }
+          }
+
+          // Draw cell
+          if (brightness > 0.01) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${brightness})`;
+            ctx.fillRect(cellX, cellY, cellSize, cellSize);
+          }
+
+          // Draw grid lines
+          const lineOpacity = 0.15 + (brightness * 0.5);
+          ctx.strokeStyle = `rgba(255, 255, 255, ${lineOpacity})`;
+          ctx.lineWidth = 1;
+          ctx.strokeRect(cellX, cellY, cellSize, cellSize);
+        }
+      }
+
+      animationRef.current = requestAnimationFrame(loop);
+    };
+
+    loop();
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [handsReady, cameraReady, cameraError, selectedGame, detectHands]);
 
   const handleBackToMenu = () => {
     setSelectedGame(null);
@@ -201,15 +226,18 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen items-center justify-center font-sans relative bg-black overflow-hidden">
-      <canvas
-        ref={canvasRef}
-        width={gridSize.cols * cellSize}
-        height={gridSize.rows * cellSize}
-        className="absolute top-0 left-0 z-0"
-      />
+      {!selectedGame && (
+        <canvas
+          ref={canvasRef}
+          width={gridSize.cols * cellSize}
+          height={gridSize.rows * cellSize}
+          className="absolute top-0 left-0 z-0"
+        />
+      )}
       <video
         ref={cameraRef}
         className="hidden"
+        autoPlay
         playsInline
         muted
       />

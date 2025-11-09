@@ -16,7 +16,7 @@ export interface HandPinchStates {
   right: PinchState;
 }
 
-const PINCH_THRESHOLD = 0.05;
+const PINCH_THRESHOLD = 75; // Pixels, same as Air Canvas
 
 export function calculateDistance(p1: Point, p2: Point): number {
   const dx = p2.x - p1.x;
@@ -32,9 +32,66 @@ export function getMidpoint(p1: Point, p2: Point): Point {
 }
 
 /**
+ * Detects pinch gesture using MediaPipe Hand landmarks
+ * Thumb tip (4) and index tip (8)
+ * Matches Air Canvas implementation exactly
+ */
+export function detectHandPinch(
+  landmarks: any[],
+  canvasWidth: number,
+  canvasHeight: number,
+  mirror: boolean = true
+): PinchState {
+  if (!landmarks || landmarks.length < 9) {
+    return {
+      isPinching: false,
+      position: null,
+      distance: 0
+    };
+  }
+
+  const thumbTip = landmarks[4];
+  const indexTip = landmarks[8];
+
+  if (!thumbTip || !indexTip) {
+    return {
+      isPinching: false,
+      position: null,
+      distance: 0
+    };
+  }
+
+  // Convert to screen pixels (like Air Canvas)
+  const thumbPoint: Point = {
+    x: mirror ? (canvasWidth - thumbTip.x * canvasWidth) : (thumbTip.x * canvasWidth),
+    y: thumbTip.y * canvasHeight
+  };
+
+  const indexPoint: Point = {
+    x: mirror ? (canvasWidth - indexTip.x * canvasWidth) : (indexTip.x * canvasWidth),
+    y: indexTip.y * canvasHeight
+  };
+
+  // Calculate distance in pixels
+  const distance = calculateDistance(thumbPoint, indexPoint);
+  const midpoint = getMidpoint(thumbPoint, indexPoint);
+
+  // Adjust position slightly above midpoint (15px like Air Canvas)
+  const adjustedPoint: Point = {
+    x: midpoint.x,
+    y: midpoint.y - 15
+  };
+
+  return {
+    isPinching: distance < PINCH_THRESHOLD,
+    position: adjustedPoint,
+    distance
+  };
+}
+
+/**
  * Detects pinch gesture for pose landmarks
  * MediaPipe Pose hand keypoints: 19 (L index), 20 (R index), 21 (L thumb), 22 (R thumb)
- * Based on Air Canvas pinch detection
  */
 export function detectPosePinch(
   thumb: NormalizedLandmark | undefined,
@@ -51,23 +108,25 @@ export function detectPosePinch(
     };
   }
 
+  // Convert to screen pixels
   const thumbPoint: Point = {
-    x: thumb.x,
-    y: thumb.y
+    x: mirror ? (canvasWidth - thumb.x * canvasWidth) : (thumb.x * canvasWidth),
+    y: thumb.y * canvasHeight
   };
 
   const indexPoint: Point = {
-    x: index.x,
-    y: index.y
+    x: mirror ? (canvasWidth - index.x * canvasWidth) : (index.x * canvasWidth),
+    y: index.y * canvasHeight
   };
 
+  // Calculate distance in pixels
   const distance = calculateDistance(thumbPoint, indexPoint);
   const midpoint = getMidpoint(thumbPoint, indexPoint);
 
   // Adjust position slightly above midpoint
   const adjustedPoint: Point = {
-    x: mirror ? 1 - midpoint.x : midpoint.x,
-    y: midpoint.y - (15 / canvasHeight)
+    x: midpoint.x,
+    y: midpoint.y - 15
   };
 
   return {

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { BaseGame, GameContext } from "@/app/types/game";
 import { usePoseDetection } from "@/app/hooks/usePoseDetection";
+import { useHandDetection } from "@/app/hooks/useHandDetection";
 import { useCamera } from "@/app/hooks/useCamera";
 import { useLandmarkSmoothing } from "@/app/hooks/useLandmarkSmoothing";
 import { usePoseInterpolation } from "@/app/hooks/usePoseInterpolation";
@@ -18,13 +19,23 @@ export default function GameContainer({ game }: GameContainerProps) {
   const lastVideoTimeRef = useRef(-1);
   const gameInitializedRef = useRef(false);
 
+  const useHands = game.metadata.useHandDetection || false;
+
   const { videoRef, isReady: cameraReady, error: cameraError } = useCamera();
-  const { detectPose, isReady: poseReady, error: poseError } = usePoseDetection({ modelType: "lite" });
+
+  const { detectPose, isReady: poseReady, error: poseError } = usePoseDetection({
+    modelType: "lite"
+  });
+
+  const { detectHands, isReady: handsReady, error: handsError } = useHandDetection({
+    numHands: 2
+  });
+
   const { smoothPoseData } = useLandmarkSmoothing();
   const { updatePoseData, getInterpolatedPose } = usePoseInterpolation();
 
-  const error = cameraError || poseError;
-  const isReady = cameraReady && poseReady;
+  const error = cameraError || (useHands ? handsError : poseError);
+  const isReady = cameraReady && (useHands ? handsReady : poseReady);
 
   // Initialize game
   useEffect(() => {
@@ -74,14 +85,23 @@ export default function GameContainer({ game }: GameContainerProps) {
       if (currentTime !== lastVideoTimeRef.current) {
         lastVideoTimeRef.current = currentTime;
 
-        // Detect pose
-        const rawPoseData = detectPose(video, performance.now());
-
-        // Apply smoothing
-        const smoothedPoseData = smoothPoseData(rawPoseData);
+        let smoothedData;
+        if (useHands) {
+          // Detect hands (hand tracking already smooth, skip smoothing)
+          const handData = detectHands(video, performance.now());
+          smoothedData = handData ? {
+            landmarks: handData.landmarks,
+            worldLandmarks: handData.worldLandmarks,
+            timestamp: performance.now()
+          } : null;
+        } else {
+          // Detect pose and apply smoothing
+          const rawPoseData = detectPose(video, performance.now());
+          smoothedData = smoothPoseData(rawPoseData);
+        }
 
         // Update interpolation with new data
-        updatePoseData(smoothedPoseData, performance.now());
+        updatePoseData(smoothedData as any, performance.now());
       }
 
       detectionFrameRef.current = requestAnimationFrame(detectionLoop);
@@ -94,7 +114,7 @@ export default function GameContainer({ game }: GameContainerProps) {
         cancelAnimationFrame(detectionFrameRef.current);
       }
     };
-  }, [isReady, detectPose, smoothPoseData, updatePoseData]);
+  }, [isReady, useHands, detectPose, detectHands, smoothPoseData, updatePoseData]);
 
   // Render loop - runs at 60fps
   useEffect(() => {

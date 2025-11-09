@@ -1,7 +1,7 @@
 import { GameRegistry } from "@/app/types/game";
 import { poseVisualizerGame } from "./poseVisualizer";
 import { fruitNinjaGame } from "./fruitNinja";
-import { pinchCirclesGame } from "./pinchCircles";
+import { pinchCirclesGame } from "./pinchCirclesHand";
 
 export const GAMES: GameRegistry = {
   "pose-visualizer": poseVisualizerGame,

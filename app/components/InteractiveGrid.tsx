@@ -17,7 +17,7 @@ interface InteractiveGridProps {
 export default function InteractiveGrid({ onShowGames }: InteractiveGridProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
   const [gridCells, setGridCells] = useState<GridCell[][]>([]);
   const [isTracking, setIsTracking] = useState(false);
 
